@@ -1,0 +1,130 @@
+﻿@page "/orderingGame"
+@using System.Drawing
+@rendermode InteractiveServer
+
+<PageTitle>Ordering game</PageTitle>
+
+<h1>Ordering game</h1>
+<div style="display: flex; flex-wrap: wrap;">
+
+@for (var i = 0; i < _colors.Length; i++)
+{
+    var index = i;
+    <div style="margin: 5px; text-align: center;">
+        <div @onclick="() => OnSelectionChanged(index)" style="position: relative; width: 64px; height: 64px; background-color: @_colors[index].Name; border: 1px solid black;">
+            @if (_checkboxStates[index])
+            {
+                <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; color: @GetContrastColor(_colors[index]);">✔</span>
+            }
+        </div>
+    </div>
+}
+
+</div>
+<br/>
+<label>Total de acertos: <h3>@_counter</h3></label>
+<br/>
+<label>Total de jogadas: <h3>@_plays</h3></label>
+@if (_counter == 6)
+{
+    <h2>PARABÉNS VOCÊ GANHOU</h2>
+}
+<br/>
+<button type="button" class="btn btn-primary" @onclick="Reset">Reiniciar</button>
+<br/>
+
+@code {
+    private readonly Color[] _colors = [Color.Blue, Color.Red, Color.Green, Color.Yellow, Color.Pink, Color.Black];
+    private Color[] _colorsSorted = new Color[6];
+
+    private int _firstColor = -1;
+    private int _secondColor = -1;
+    private int _counter;
+    private int _plays;
+    
+    private readonly bool[] _checkboxStates = new bool[6];
+    
+    static string GetContrastColor(Color color)
+    {
+        var luminance = (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;        
+        return luminance > 0.5 ? "black" : "white";
+    }
+    
+    protected override Task OnInitializedAsync()
+    {
+        SortColors();
+        return Task.CompletedTask;
+    }
+
+    private void OnSelectionChanged(int index)
+    {
+        _checkboxStates[index] = !_checkboxStates[index];
+        if (_checkboxStates[index])
+        {
+            if (_firstColor == -1)
+            {
+                _firstColor = index;
+            }
+            else if(_secondColor == -1)
+            {
+                _secondColor = index;
+                (_colors[_firstColor], _colors[_secondColor]) = (_colors[_secondColor], _colors[_firstColor]);
+                ResetCheckboxes();
+                ValidateColors();
+            }
+        }
+        else
+        {
+            _checkboxStates[index] = false;
+            _firstColor = -1;
+        }
+    }
+    
+    private void ResetCheckboxes()
+    {
+        for (var i = 0; i < _checkboxStates.Length; i++)
+        {
+            _checkboxStates[i] = false;
+        }
+        _firstColor = -1;
+        _secondColor = -1;
+    }
+
+    private bool ValidateSorted()
+    {
+        for (int i = 0; i < _colors.Length; i++)
+        {
+            if (_colors[i] == _colorsSorted[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void ValidateColors()
+    {
+        var count = _colors.Where((t, i) => t == _colorsSorted[i]).Count();
+        _plays++;
+        _counter = count;
+    }
+
+
+    private void Reset()
+    {
+        ResetCheckboxes();
+        _plays = 0;
+        _counter = 0;
+        SortColors();
+    }
+
+    private void SortColors()
+    {
+        var random = new Random();
+        do
+        {
+            _colorsSorted = _colors.OrderBy(_ => random.Next()).ToArray();
+        } while (!ValidateSorted());
+    }
+}
